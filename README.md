@@ -1,0 +1,1 @@
+Flutter ile insan sağlığı odaklı sosyal medya/yarışma uygulaması. | Social media/contest application focused on human health with Flutter.
