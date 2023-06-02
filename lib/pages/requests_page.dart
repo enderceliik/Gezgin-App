@@ -39,7 +39,7 @@ class _RequestsPageState extends State<RequestsPage> {
             'Davetlerin: ',
           ),
         ),
-        body: widget.requestList.isEmpty
+        body: widget.requestList.isEmpty == false
             ? FutureBuilder(
                 future: newMethod(),
                 builder: (context, snapshot) {
@@ -176,7 +176,7 @@ class _RequestsPageState extends State<RequestsPage> {
             : Container(
                 alignment: Alignment.center,
                 child: const Text(
-                  'Herhangi bir davetiyeni bulunmamaktadır.',
+                  'Herhangi bir davetiyeniz bulunmamaktadır.',
                 ),
               ),
       ),

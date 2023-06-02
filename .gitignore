@@ -10,7 +10,8 @@ pubspec.lock
 # Directory created by dartdoc
 # If you don't generate documentation locally you can remove this line.
 doc/api/
-
+C:\vsCodeRepo\yuruyus_app\android\app\google-services.json
+C:\vsCodeRepo\yuruyus_app\android\app\src\main\AndroidManifest.xml
 # dotenv environment variables file
 .env*
 

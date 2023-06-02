@@ -24,16 +24,8 @@ class _UserGunceState extends State<UserGunce> {
   late FixedExtentScrollController listWheelScrollViewController;
   late bool isShow;
   late List nofiticationList;
-  bool anyNofitication = false;
-  Map <String, List> gunceS = <String, List>{};
-
-  @override
-  void initState() {
-    super.initState();
-    listWheelScrollViewController = FixedExtentScrollController();
-    getNofitication();
-    checkGunceDate('2ac2cfc0-c96a-11ed-9030-c9bc94d85e4d');
-  }
+  bool anyNofitication = true;
+  Map<String, List> gunceS = <String, List>{};
 
   void getNofitication() async {
     DocumentSnapshot snapshot = await FirebaseFirestore.instance
@@ -44,54 +36,49 @@ class _UserGunceState extends State<UserGunce> {
       nofiticationList = (snapshot.data()! as dynamic)['requests'];
       if (nofiticationList.isEmpty) {
         anyNofitication = true;
-      }
-      else
-      {
+      } else {
         anyNofitication = false;
       }
     });
   }
 
-  Future checkGunceDate(String gunceID) async {
-    try {
-      var gunceSnapshots = await FirebaseFirestore.instance
-        .collection('gunceRep')
-        .where('uid', whereIn: await getData())
-        .get();
-      List gunceListFromQuerySnapshot =
-        gunceSnapshots.docs.map((doc) => doc.data()).toList();
-    for (int i = 0; i < gunceListFromQuerySnapshot.length; i++) {
-      setState(() {
-        gunceS[gunceListFromQuerySnapshot[i]['uid']] = gunceListFromQuerySnapshot[i]['viewList'];
-        var variable = gunceS[gunceListFromQuerySnapshot[i]['uid']];
-      });
-    }
-    } catch (exception) {
-        print('HATA');
-    }
-  }
+  // Future checkGunceDate(String gunceID) async {
+  //   try {
+  //     var gunceSnapshots = await FirebaseFirestore.instance
+  //         .collection('gunceRep')
+  //         .where('uid', whereIn: await getData())
+  //         .get();
+  //     List gunceListFromQuerySnapshot =
+  //         gunceSnapshots.docs.map((doc) => doc.data()).toList();
+  //     for (int i = 0; i < gunceListFromQuerySnapshot.length; i++) {
+  //       setState(() {
+  //         gunceS[gunceListFromQuerySnapshot[i]['uid']] =
+  //             gunceListFromQuerySnapshot[i]['viewList'];
+  //         var variable = gunceS[gunceListFromQuerySnapshot[i]['uid']];
+  //       });
+  //     }
+  //   } catch (exception) {
+  //     print('HATA');
+  //   }
+  // }
 
-  @override
-  void dispose() {
-    listWheelScrollViewController.dispose();
-    super.dispose();
-  }
-
-  Future<List?> getData() async {
-    // yedek aıl fonksiyon
-    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+  Future<QuerySnapshot<Map<String, dynamic>>> sortingTries() async {
+    final currentUserRef = await FirebaseFirestore.instance
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser!.uid)
         .get();
-    List followingUsers = (snapshot.data()! as dynamic)[
+    List followingUsers = (currentUserRef.data()! as dynamic)[
         'following']; // Veritabanından çekmiş olduğumuz kullanıcı map'inden following listesini locl listeye aldık.
     followingUsers.add(FirebaseAuth.instance.currentUser!.uid);
-    return followingUsers;
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('uid', whereIn: followingUsers)
+        .orderBy('distance', descending: true)
+        .get();
+
+    return querySnapshot;
   }
-  // List gunc(String uid){
-  //   List liste = Set<uid>.of(gunceS.values);
-  //   return liste;
-  // }
+
   void callAddGuncePage(Uint8List file) async {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -99,7 +86,6 @@ class _UserGunceState extends State<UserGunce> {
       ),
     );
   }
-
 
   _selectImage(BuildContext context) async {
     return showDialog(
@@ -122,7 +108,8 @@ class _UserGunceState extends State<UserGunce> {
                   Uint8List file = await pickImage(
                     ImageSource.camera,
                   );
-                  if (file != null) { // file boş olabilir kamera'dan geri gelince özel bir metod var mı bakacağım.
+                  if (file != null) {
+                    // file boş olabilir kamera'dan geri gelince özel bir metod var mı bakacağım.
                     callAddGuncePage(file);
                   }
                 },
@@ -150,6 +137,19 @@ class _UserGunceState extends State<UserGunce> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    listWheelScrollViewController = FixedExtentScrollController();
+    getNofitication();
+    // checkGunceDate('2ac2cfc0-c96a-11ed-9030-c9bc94d85e4d');
+  }
+
+  @override
+  void dispose() {
+    listWheelScrollViewController.dispose();
+    super.dispose();
+  }
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: Colors.blue,
@@ -166,33 +166,36 @@ class _UserGunceState extends State<UserGunce> {
           backgroundColor: Colors.blueAccent,
           actions: <Widget>[
             Padding(
-                padding: const EdgeInsets.only(
-                  right: 20.0,
-                ),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => RequestsPage(requestList: nofiticationList),
-                      ),
-                    );
-                  },
-                  child: anyNofitication
-                      ? const Icon(
-                          Icons.notifications,
-                        )
-                      : const Icon(Icons.notifications_active,
-                          color: Color.fromARGB(255, 255, 128, 1)),
-                ),),
-                Padding(
               padding: const EdgeInsets.only(
                 right: 20.0,
               ),
               child: GestureDetector(
                 onTap: () {
-                     Navigator.of(context).push(
-                       MaterialPageRoute(builder: (context) => TeamManagementPage()),
-                    );
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          RequestsPage(requestList: nofiticationList),
+                    ),
+                  );
+                },
+                child: anyNofitication
+                    ? const Icon(
+                        Icons.notifications,
+                      )
+                    : const Icon(Icons.notifications_active,
+                        color: Color.fromARGB(255, 255, 128, 1)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(
+                right: 20.0,
+              ),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (context) => TeamManagementPage()),
+                  );
                 },
                 child: const Icon(
                   Icons.run_circle_outlined,
@@ -220,7 +223,8 @@ class _UserGunceState extends State<UserGunce> {
           ],
         ),
         body: FutureBuilder(
-          future: newMethod(),
+          // future: newMethod(),
+          future: sortingTries(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -374,9 +378,9 @@ class _UserGunceState extends State<UserGunce> {
                         //         borderRadius: BorderRadius.circular(8.0),
                         //       ),
                         decoration: BoxDecoration(
-                                color: const Color(0x800097A7),
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
+                          color: const Color(0x800097A7),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
                         child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -415,7 +419,10 @@ class _UserGunceState extends State<UserGunce> {
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
-                                    child: Text('${(snapshot.data! as dynamic).docs[index]['distance'].toString()} KM',
+                                    child: Text(
+                                      (snapshot.data! as dynamic)
+                                          .docs[index]['distance']
+                                          .toString(),
                                       style: const TextStyle(
                                         color: Colors.lightBlueAccent,
                                         fontSize: 12.0,
@@ -435,12 +442,4 @@ class _UserGunceState extends State<UserGunce> {
           },
         ));
   }
-
-  Future<QuerySnapshot<Map<String, dynamic>>> newMethod() async =>
-      FirebaseFirestore.instance
-          .collection('users')
-          .where('uid',
-              whereIn:
-                  await getData()) //.orderBy('distance', descending: true,)
-          .get();
 }

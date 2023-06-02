@@ -1,8 +1,11 @@
 // Giriş yapılınca karşılayacak sayfa: 'homePage'
 // ignore_for_file: file_names
 
+import 'dart:developer';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:pedometer/pedometer.dart';
 import 'package:yuruyus_app/pages/console.dart';
 import 'package:yuruyus_app/pages/gunce_page.dart';
 import 'package:yuruyus_app/pages/profile_page.dart';
@@ -16,9 +19,60 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   final user = FirebaseAuth.instance.currentUser!;
+  // late Stream<StepCount> _stepCountStream;
 
+  // String _steps = '?';
+  // int _stepsStartValue = 0;
+  // void onStepCount(StepCount event) {
+  //   log(event.toString());
+  //   setState(() {
+  //     if (_stepsStartValue == 0) {
+  //       _stepsStartValue = event.steps;
+  //     }
+  //     _steps = (event.steps - _stepsStartValue).toString();
+  //   });
+  // }
+
+  // void onStepCountError(error) {
+  //   log('onStepCountError: $error');
+  //   setState(() {
+  //     _steps = 'Step Count not available';
+  //   });
+  // }
+
+  // void initPlatformState() {
+  //   _stepCountStream = Pedometer.stepCountStream;
+  //   _stepCountStream.listen(onStepCount).onError(onStepCountError);
+  //   if (!mounted) return;
+  // }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   initPlatformState();
+  //   WidgetsBinding.instance.addObserver(this);
+  // }
+  // @override
+  // void dispose() {
+  //   WidgetsBinding.instance.removeObserver(this);
+  //   super.dispose();
+  // }
+  
+  // @override
+  // void didChangeAppLifecycleState(AppLifecycleState state) {
+  //   super.didChangeAppLifecycleState(state);
+
+  //   if (state == AppLifecycleState.detached) {
+  //     fonksiyonuCalistir();
+  //   }
+  // }
+
+  // void fonksiyonuCalistir() {
+  //   // Uygulama tamamen kapatıldığında yapılacak işlemler burada yer alır
+  //   print("Uygulama tamamen kapatıldı");
+  //   // ...
+  // }
   int _selectedIndex = 1; // for the BottomNavigationBarItem
   void _navigateBottomBar(int index) {
     setState(() {
@@ -39,6 +93,11 @@ class _HomePageState extends State<HomePage> {
       child: Scaffold(
         //appBar: AppBar(backgroundColor: Colors.lightBlue,),
         body: _childeren[_selectedIndex],
+        // floatingActionButton: FloatingActionButton(onPressed: () {
+        //   log('ender');
+
+        // },
+        // child: Text('deded'),),
         drawer: Container(
           width: 205,
           child: Drawer(

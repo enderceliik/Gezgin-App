@@ -1,6 +1,6 @@
 // ignore_for_file: file_names
 
-import 'dart:math';
+import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,8 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:label_marker/label_marker.dart';
 import 'package:network_image_to_byte/network_image_to_byte.dart';
+import 'package:pedometer/pedometer.dart';
 import 'package:yuruyus_app/pages/profile_page.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../services/pedometer_count.dart';
 import 'gunce_page.dart';
 import 'gunce_show_page.dart';
 import 'package:http/http.dart' as http;
@@ -46,6 +48,8 @@ class _UserGezginState extends State<UserGezgin> {
   BitmapDescriptor markerIcon = BitmapDescriptor.defaultMarker;
   final LatLng _startPositionEmulator = const LatLng(40.999040, 39.758796);
   final LatLng _currentPositionEmulator = const LatLng(41.005457, 39.730164);
+  bool isPedometerActive = false;
+  int distance = -1;
 
   void _getUserLocation() async {
     // _markers.addLabelMarker(LabelMarker(
@@ -135,11 +139,11 @@ class _UserGezginState extends State<UserGezgin> {
         .collection('users')
         .doc(FirebaseAuth.instance.currentUser!.uid)
         .get();
+    distance = (snapshot.data()! as dynamic)['distance'];
     List followingUsers = (snapshot.data()! as dynamic)['following'];
     followingUsers.add(FirebaseAuth.instance.currentUser!.uid);
     return followingUsers;
   }
-
   // void initMarker(specify, specifyID) async {
   void initMarker(gunce) async {
     var snap = await FirebaseFirestore.instance
@@ -152,10 +156,7 @@ class _UserGezginState extends State<UserGezgin> {
     final Marker marker = Marker(
       markerId: MarkerId(gunce['uid']),
       position: LatLng(
-          gunce['guncePosition']
-          .latitude, 
-          gunce['guncePosition']
-          .longitude),
+          gunce['guncePosition'].latitude, gunce['guncePosition'].longitude),
       icon: BitmapDescriptor.fromBytes(customMarker),
       infoWindow: InfoWindow(
         title: username,
@@ -197,6 +198,52 @@ class _UserGezginState extends State<UserGezgin> {
     return resizedData;
   }
 
+  late Stream<StepCount> _stepCountStream;
+  late StreamSubscription<StepCount> _stepCountSubscription;
+
+  String _steps = '?';
+  int _stepsStartValue = 0;
+
+  Future<void> onStepCount(StepCount event) async {
+    // log(event.toString());
+    setState(() {
+      if (_stepsStartValue == 0) {
+        _stepsStartValue = event.steps;
+      }
+      _steps = (event.steps - _stepsStartValue).toString();
+      log(_steps);
+    });
+
+    if (!isPedometerActive) {  // bottomNavigationBar
+      _stepCountSubscription.cancel();
+      log('Step Count Stopped');
+      log('Final Step Count: $_steps');
+      if (distance != -1) {
+        int total = distance + int.parse(_steps);
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(FirebaseAuth.instance.currentUser!.uid)
+            .update({
+          'distance': total, // Profil tablosunu oluşturduğumuz kısım.
+        });
+      }
+      _stepsStartValue = 0;
+    }
+  }
+
+  void onStepCountError(error) {
+    log('onStepCountError: $error');
+    setState(() {
+      _steps = 'Step Count not available';
+    });
+  }
+
+  void initPlatformState() {
+    _stepCountStream = Pedometer.stepCountStream;
+    _stepCountSubscription =
+        _stepCountStream.listen(onStepCount, onError: onStepCountError);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -223,7 +270,8 @@ class _UserGezginState extends State<UserGezgin> {
     //     ),
     //   ].toSet();
     // }
-
+    // _startListening();
+    // _listenToChanges();
     return Scaffold(
       appBar: AppBar(
         title: TextFormField(
@@ -324,141 +372,184 @@ class _UserGezginState extends State<UserGezgin> {
                   },
                 ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(right: 38.0,bottom: 2.0),
-        child: FloatingActionButton(
-          backgroundColor: Colors.white,
-          child: const Icon(Icons.share_location_outlined,color: Colors.blueAccent,),
-          onPressed: () async {
-            Position position = await Geolocator.getCurrentPosition();
-            googleMapController.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                    // target: LatLng(position.latitude, position.longitude),
-                    target: _currentPositionEmulator,
-                    zoom: 17),
+        padding: const EdgeInsets.only(left: 250.0),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(3.0),
+              child: FloatingActionButton(
+                backgroundColor: Colors.white,
+                child: isPedometerActive == false
+                    ? const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.blueAccent,
+                      )
+                    : const Icon(
+                        Icons.pause,
+                        color: Colors.redAccent,
+                      ),
+                onPressed: () async {
+                  log('isPedometerActive => $isPedometerActive');
+                  if (!isPedometerActive) {
+                    setState(() {
+                      isPedometerActive = true;
+                    });
+                    initPlatformState();
+                    setState(() {});
+                    return;
+                  } else {
+                    log('else');
+                    setState(() {
+                      isPedometerActive = false;
+                    });
+                    setState(() {});
+                  }
+                },
               ),
-            );
-            //markers.clear();
-            Marker marker = Marker(
-                markerId: MarkerId("current Position"),
-                // position: LatLng(position.latitude, position.longitude),
-                position: _currentPositionEmulator,
-                icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueCyan));
-            markers[MarkerId(FirebaseAuth.instance.currentUser!.uid)] = marker;
-            setState(() {});
-          },
+            ),
+            Padding(
+              padding: const EdgeInsets.all(3.0),
+              child: FloatingActionButton(
+                backgroundColor: Colors.white,
+                child: const Icon(
+                  Icons.share_location_outlined,
+                  color: Colors.blueAccent,
+                ),
+                onPressed: () async {
+                  Position position = await Geolocator.getCurrentPosition();
+                  googleMapController.animateCamera(
+                    CameraUpdate.newCameraPosition(
+                      CameraPosition(
+                          // target: LatLng(position.latitude, position.longitude),
+                          target: _currentPositionEmulator,
+                          zoom: 17),
+                    ),
+                  );
+                  //markers.clear();
+                  Marker marker = Marker(
+                      markerId: MarkerId("current Position"),
+                      // position: LatLng(position.latitude, position.longitude),
+                      position: _currentPositionEmulator,
+                      icon: BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueCyan));
+                  markers[MarkerId(FirebaseAuth.instance.currentUser!.uid)] =
+                      marker;
+                  setState(() {});
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Future<BitmapDescriptor> createCustomMarkerBitmapWithNameAndImage(
-      String imagePath, Size size, String name) async {
-    TextSpan span = new TextSpan(
-        style: new TextStyle(
-          height: 1.2,
-          color: Colors.white,
-          fontSize: 30.0,
-          fontWeight: FontWeight.normal,
-        ),
-        text: name);
+  // Future<BitmapDescriptor> createCustomMarkerBitmapWithNameAndImage(
+  //     String imagePath, Size size, String name) async {
+  //   TextSpan span = new TextSpan(
+  //       style: new TextStyle(
+  //         height: 1.2,
+  //         color: Colors.white,
+  //         fontSize: 30.0,
+  //         fontWeight: FontWeight.normal,
+  //       ),
+  //       text: name);
 
-    TextPainter tp = new TextPainter(
-      text: span,
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
-    );
-    tp.layout();
+  //   TextPainter tp = new TextPainter(
+  //     text: span,
+  //     textAlign: TextAlign.center,
+  //     textDirection: TextDirection.ltr,
+  //   );
+  //   tp.layout();
 
-    ui.PictureRecorder recorder = new ui.PictureRecorder();
-    Canvas canvas = new Canvas(recorder);
+  //   ui.PictureRecorder recorder = new ui.PictureRecorder();
+  //   Canvas canvas = new Canvas(recorder);
 
-    final double shadowWidth = 15.0;
-    final double borderWidth = 2.0;
-    final double imageOffset = shadowWidth + borderWidth;
+  //   final double shadowWidth = 15.0;
+  //   final double borderWidth = 2.0;
+  //   final double imageOffset = shadowWidth + borderWidth;
 
-    final Radius radius = Radius.circular(size.width / 2);
+  //   final Radius radius = Radius.circular(size.width / 2);
 
-    final Paint shadowCirclePaint = Paint()
-      ..color = Theme.of(context).primaryColor;
+  //   final Paint shadowCirclePaint = Paint()
+  //     ..color = Theme.of(context).primaryColor;
 
-    // Add shadow circle
-    canvas.drawRRect(
-        RRect.fromRectAndCorners(
-          Rect.fromLTWH(
-              size.width / 8, size.width / 2, size.width, size.height),
-          topLeft: radius,
-          topRight: radius,
-          bottomLeft: radius,
-          bottomRight: radius,
-        ),
-        shadowCirclePaint);
+  //   // Add shadow circle
+  //   canvas.drawRRect(
+  //       RRect.fromRectAndCorners(
+  //         Rect.fromLTWH(
+  //             size.width / 8, size.width / 2, size.width, size.height),
+  //         topLeft: radius,
+  //         topRight: radius,
+  //         bottomLeft: radius,
+  //         bottomRight: radius,
+  //       ),
+  //       shadowCirclePaint);
 
-    // TEXT BOX BACKGROUND
-    Paint textBgBoxPaint = Paint()..color = Theme.of(context).primaryColor;
+  //   // TEXT BOX BACKGROUND
+  //   Paint textBgBoxPaint = Paint()..color = Theme.of(context).primaryColor;
 
-    Rect rect = Rect.fromLTWH(
-      0,
-      0,
-      tp.width + 35,
-      50,
-    );
+  //   Rect rect = Rect.fromLTWH(
+  //     0,
+  //     0,
+  //     tp.width + 35,
+  //     50,
+  //   );
 
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, Radius.circular(10.0)),
-      textBgBoxPaint,
-    );
+  //   canvas.drawRRect(
+  //     RRect.fromRectAndRadius(rect, Radius.circular(10.0)),
+  //     textBgBoxPaint,
+  //   );
 
-    //ADD TEXT WITH ALIGN TO CANVAS
-    tp.paint(canvas, new Offset(20.0, 5.0));
+  //   //ADD TEXT WITH ALIGN TO CANVAS
+  //   tp.paint(canvas, new Offset(20.0, 5.0));
 
-    /* Do your painting of the custom icon here, including drawing text, shapes, etc. */
+  //   /* Do your painting of the custom icon here, including drawing text, shapes, etc. */
 
-    Rect oval = Rect.fromLTWH(35, 78, size.width - (imageOffset * 2),
-        size.height - (imageOffset * 2));
+  //   Rect oval = Rect.fromLTWH(35, 78, size.width - (imageOffset * 2),
+  //       size.height - (imageOffset * 2));
 
-    // ADD  PATH TO OVAL IMAGE
-    canvas.clipPath(Path()..addOval(oval));
+  //   // ADD  PATH TO OVAL IMAGE
+  //   canvas.clipPath(Path()..addOval(oval));
 
-    ui.Image image = await getImageFromPath(imagePath);
-    paintImage(canvas: canvas, image: image, rect: oval, fit: BoxFit.fitWidth);
+  //   ui.Image image = await getImageFromPath(imagePath);
+  //   paintImage(canvas: canvas, image: image, rect: oval, fit: BoxFit.fitWidth);
 
-    ui.Picture p = recorder.endRecording();
-    ByteData? pngBytes = await (await p.toImage(300, 300))
-        .toByteData(format: ui.ImageByteFormat.png);
+  //   ui.Picture p = recorder.endRecording();
+  //   ByteData? pngBytes = await (await p.toImage(300, 300))
+  //       .toByteData(format: ui.ImageByteFormat.png);
 
-    Uint8List data = Uint8List.view(pngBytes!.buffer);
+  //   Uint8List data = Uint8List.view(pngBytes!.buffer);
 
-    return BitmapDescriptor.fromBytes(data);
-  }
+  //   return BitmapDescriptor.fromBytes(data);
+  // }
 
-  Future<ui.Image> getImageFromPath(String imagePath) async {
-    File imageFile = File(imagePath);
+  // Future<ui.Image> getImageFromPath(String imagePath) async {
+  //   File imageFile = File(imagePath);
 
-    Uint8List imageBytes = imageFile.readAsBytesSync();
+  //   Uint8List imageBytes = imageFile.readAsBytesSync();
 
-    final Completer<ui.Image> completer = new Completer();
+  //   final Completer<ui.Image> completer = new Completer();
 
-    ui.decodeImageFromList(imageBytes, (ui.Image img) {
-      return completer.complete(img);
-    });
+  //   ui.decodeImageFromList(imageBytes, (ui.Image img) {
+  //     return completer.complete(img);
+  //   });
 
-    return completer.future;
-  }
+  //   return completer.future;
+  // }
 
-  Future<BitmapDescriptor> getMarkerIcon(String image, String name) async {
-    if (image != null) {
-      final File markerImageFile =
-          await DefaultCacheManager().getSingleFile(image);
-      Size s = const Size(120, 120);
+  // Future<BitmapDescriptor> getMarkerIcon(String image, String name) async {
+  //   if (image != null) {
+  //     final File markerImageFile =
+  //         await DefaultCacheManager().getSingleFile(image);
+  //     Size s = const Size(120, 120);
 
-      var icon = await createCustomMarkerBitmapWithNameAndImage(
-          markerImageFile.path, s, name);
+  //     var icon = await createCustomMarkerBitmapWithNameAndImage(
+  //         markerImageFile.path, s, name);
 
-      return icon;
-    } else {
-      return BitmapDescriptor.defaultMarker;
-    }
-  }
+  //     return icon;
+  //   } else {
+  //     return BitmapDescriptor.defaultMarker;
+  //   }
+  // }
 }

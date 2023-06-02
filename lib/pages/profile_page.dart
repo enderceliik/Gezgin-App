@@ -20,7 +20,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int following = 0;
   bool isFollowing = false;
   String username = '';
-  double distance = -1;
+  int distance = -1;
   String name = '';
   String profilePhotoURL = '';
   bool isLoading = false;
@@ -176,7 +176,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                       child: Padding(
                                         padding: const EdgeInsets.all(8.0),
-                                        child: Text('${distance.toString()} KM',
+                                        child: Text(distance.toString(),
                                           style: const TextStyle(
                                             color: Colors.lightBlueAccent,
                                             fontSize: 20.0,

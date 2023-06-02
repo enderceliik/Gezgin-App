@@ -20,7 +20,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late Stream<StepCount> _stepCountStream;
-
   String _steps = '?';
   int _stepsStartValue = 0;
 
@@ -45,6 +44,7 @@ class _MyAppState extends State<MyApp> {
   }
 // 1200 startVal
 // 1201 value = startVal - _steps = 1
+  
   void onStepCount(StepCount event) {
     print(event);
     setState(() {
@@ -159,4 +159,74 @@ class _MyAppState extends State<MyApp> {
 //       ),
 //     );
 //   }
+// }
+
+// import 'dart:developer';
+
+// import 'package:flutter/widgets.dart';
+
+// class LifecycleWatcher extends StatefulWidget {
+//   const LifecycleWatcher({super.key});
+
+//   @override
+//   State<LifecycleWatcher> createState() => _LifecycleWatcherState();
+// }
+
+// class _LifecycleWatcherState extends State<LifecycleWatcher>
+//     with WidgetsBindingObserver {
+//   AppLifecycleState? _lastLifecycleState;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     WidgetsBinding.instance.addObserver(this);
+//   }
+
+//   @override
+//   void dispose() {
+//     WidgetsBinding.instance.removeObserver(this);
+//     super.dispose();
+//   }
+
+//   @override
+//   void didChangeAppLifecycleState(AppLifecycleState state) {
+//     setState(() {
+//       _lastLifecycleState = state;
+//       if(_lastLifecycleState == AppLifecycleState.detached)
+//       {
+//         log('detached');
+//       }
+//       else if(_lastLifecycleState == AppLifecycleState.resumed)
+//       {
+//         log('resumed');
+//       }
+//       else if(_lastLifecycleState == AppLifecycleState.inactive)
+//       {
+//         log('inactive');
+//       }
+//       else if(_lastLifecycleState == AppLifecycleState.paused)
+//       {
+//         log('paused');
+//       }
+//     });
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (_lastLifecycleState == null) {
+//       return const Text(
+//         'This widget has not observed any lifecycle changes.',
+//         textDirection: TextDirection.ltr,
+//       );
+//     }
+
+//     return Text(
+//       'The most recent lifecycle state this widget observed was: $_lastLifecycleState.',
+//       textDirection: TextDirection.ltr,
+//     );
+//   }
+// }
+
+// void main() {
+//   runApp(const Center(child: LifecycleWatcher()));
 // }
